@@ -10,9 +10,9 @@ const productSchema = new mongoose.Schema(
     condition: String,
 
     sellerCollegeId: {
-  type: String,
-  required: true,
-},
+      type: String,
+      required: true,
+    },
 
     sellerEmail: String,
 
@@ -22,12 +22,35 @@ const productSchema = new mongoose.Schema(
       default: "active",
     },
 
-    createdAt: {
-      type: Date,
-      default: Date.now,
+    images: [
+      {
+        url: String,
+        public_id: String,
+      },
+    ],
+
+    auctionEndAt: Date,
+    currentBid: {
+      type: Number,
+      default: 0,
     },
+
+    winnerEmail: {
+  type: String,
+},
+
+finalPrice: {
+  type: Number,
+},
+
+auctionEndedAt: {
+  type: Date,
+},
+
+
+    originalPrice: Number,
   },
-  { timestamps: true }
+  { timestamps: true } // 👈 createdAt lives here
 );
 
 module.exports = mongoose.model("Product", productSchema);

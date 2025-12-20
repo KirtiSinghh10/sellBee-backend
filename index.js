@@ -6,10 +6,12 @@ const cors = require("cors");
 const app = express();
 
 /* 🔥 MUST COME FIRST */
-app.use(cors({
-  origin: ["http://localhost:8080", "http://localhost:8084"],
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: ["http://localhost:8080", "http://localhost:8084"],
+    credentials: true,
+  })
+);
 
 app.use(express.json());
 
@@ -20,6 +22,10 @@ app.use("/products", productRoutes);
 const authRoutes = require("./routes/authRoutes");
 app.use("/auth", authRoutes);
 
+const auctionRoutes = require("./routes/auctionRoutes");
+app.use("/auction", require("./routes/auctionRoutes"));
+
+
 /* TEST */
 app.get("/", (req, res) => {
   res.send("SellBee backend running");
@@ -28,8 +34,15 @@ app.get("/", (req, res) => {
 /* DB */
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected successfully 🐝"))
+  .then(() => {
+    console.log("MongoDB connected successfully 🐝");
+
+    // 🔁 START CRON JOBS
+    require("./cron/autoAuction");
+    require("./cron/endAuction");
+  })
   .catch(console.error);
+
 
 /* SERVER */
 const PORT = process.env.PORT || 5000;

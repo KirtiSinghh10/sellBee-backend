@@ -4,7 +4,6 @@ const Product = require("../models/Product");
 const upload = require("../middleware/upload");
 const auth = require("../middleware/auth");
 const cloudinary = require("cloudinary").v2;
-const User = require("../models/User");
 
 const router = express.Router();
 
@@ -28,13 +27,15 @@ router.post(
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      const images =
-        req.files?.map((file) => ({
-          url: file.path,
-          public_id: file.filename,
-        })) || [];
+      // ✅ SAFE image extraction
+      const images = Array.isArray(req.files)
+        ? req.files.map((file) => ({
+            url: file.path,        // Cloudinary URL
+            public_id: file.filename,
+          }))
+        : [];
 
-      const product = new Product({
+      const product = await Product.create({
         title,
         description,
         price,
@@ -46,11 +47,12 @@ router.post(
         images,
       });
 
-      await product.save();
-      res.status(201).json(product);
+      return res.status(201).json(product);
     } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: "Failed to create listing" });
+      console.error("❌ CREATE LISTING ERROR:", err);
+      return res
+        .status(500)
+        .json({ message: err.message || "Failed to create listing" });
     }
   }
 );
@@ -59,10 +61,10 @@ router.post(
 router.get("/", async (req, res) => {
   try {
     const products = await Product.find().sort({ createdAt: -1 });
-    res.json(products);
+    return res.json(products);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to fetch products" });
+    return res.status(500).json({ message: "Failed to fetch products" });
   }
 });
 
@@ -73,10 +75,10 @@ router.get("/mine/:collegeId", async (req, res) => {
       sellerCollegeId: req.params.collegeId,
     }).sort({ createdAt: -1 });
 
-    res.json(products);
+    return res.json(products);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to fetch user listings" });
+    return res.status(500).json({ message: "Failed to fetch user listings" });
   }
 });
 
@@ -100,10 +102,10 @@ router.get("/auction/all", async (req, res) => {
       totalBids: p.currentBid > p.originalPrice ? 1 : 0,
     }));
 
-    res.json(auctions);
+    return res.json(auctions);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to fetch auctions" });
+    return res.status(500).json({ message: "Failed to fetch auctions" });
   }
 });
 
@@ -142,10 +144,10 @@ router.put("/:id", auth, async (req, res) => {
     });
 
     await product.save();
-    res.json(product);
+    return res.json(product);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to update listing" });
+    return res.status(500).json({ message: "Failed to update listing" });
   }
 });
 
@@ -168,15 +170,16 @@ router.delete("/:id", auth, async (req, res) => {
       });
     }
 
+    // ✅ Delete images from Cloudinary
     for (const img of product.images) {
       await cloudinary.uploader.destroy(img.public_id);
     }
 
     await product.deleteOne();
-    res.json({ message: "Listing + images deleted" });
+    return res.json({ message: "Listing + images deleted" });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Delete failed" });
+    return res.status(500).json({ message: "Delete failed" });
   }
 });
 
@@ -196,10 +199,10 @@ router.patch("/:id/sold", auth, async (req, res) => {
     product.status = "sold";
     await product.save();
 
-    res.json(product);
+    return res.json(product);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to mark as sold" });
+    return res.status(500).json({ message: "Failed to mark as sold" });
   }
 });
 
@@ -218,10 +221,10 @@ router.get("/:id", async (req, res) => {
       return res.status(404).json({ message: "Listing not found" });
     }
 
-    res.json(product);
+    return res.json(product);
   } catch (err) {
     console.error("❌ GET /products/:id error:", err);
-    res.status(500).json({ message: "Failed to fetch listing" });
+    return res.status(500).json({ message: "Failed to fetch listing" });
   }
 });
 

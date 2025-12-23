@@ -17,12 +17,15 @@ router.put("/me", protect, async (req, res) => {
     const updatedUser = await user.save();
 
     res.json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      collegeId: updatedUser.collegeId,
-      phone: updatedUser.phone,
-    });
+  user: {
+    _id: updatedUser._id,
+    name: updatedUser.name,
+    email: updatedUser.email,
+    collegeId: updatedUser.collegeId,
+    phone: updatedUser.phone,
+  },
+});
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to update profile" });

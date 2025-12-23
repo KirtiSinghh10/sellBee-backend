@@ -44,6 +44,7 @@ router.post(
         sellerPhone,
         sellerCollegeId: req.user.collegeId,
         sellerEmail: req.user.email,
+        sellerTestimonial: req.user.testimonial,
         images,
       });
 

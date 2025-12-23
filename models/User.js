@@ -20,6 +20,12 @@ const userSchema = new mongoose.Schema({
   required: true,
 },
 
+testimonial: {
+    type: String,
+    maxLength: 300,
+    required: false,
+  },
+
   collegeId: {
   type: String,
   required: true,

@@ -4,11 +4,11 @@ const cron = require("node-cron");
 const Product = require("../models/Product");
 const sendMail = require("../utils/sendMail");
 
+// Runs every day at midnight
+cron.schedule("0 0 * * *", async () => {
+  console.log("⏰ Running end-auction cron");
 
-cron.schedule("*/1 * * * *", async () => {
   try {
-    console.log("⏰ Checking auctions to end...");
-
     const now = new Date();
 
     const products = await Product.find({
@@ -21,10 +21,28 @@ cron.schedule("*/1 * * * *", async () => {
       product.finalPrice = product.currentBid;
       product.auctionEndedAt = now;
       await product.save();
+
+      // 📧 Email seller
+      await sendMail({
+        to: product.sellerEmail,
+        subject: "Your auction has ended 🐝",
+        text: `Your product "${product.title}" sold for ₹${product.finalPrice}.`,
+      });
+
+      // 📧 Email winner (if exists)
+      if (product.winnerEmail) {
+        await sendMail({
+          to: product.winnerEmail,
+          subject: "You won the auction! 🎉",
+          text: `You won "${product.title}" for ₹${product.finalPrice}.
+Please contact the seller to complete the purchase.`,
+        });
+      }
     }
 
-    console.log(`🏁 Ended ${products.length} auctions`);
+    console.log(`✅ ${products.length} auctions ended`);
+
   } catch (err) {
-    console.error("❌ End-auction error:", err);
+    console.error("❌ End-auction cron error:", err);
   }
 });

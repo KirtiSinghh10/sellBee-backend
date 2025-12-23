@@ -19,11 +19,13 @@ app.use(express.json());
 const productRoutes = require("./routes/productRoutes");
 app.use("/products", productRoutes);
 
+
 const authRoutes = require("./routes/authRoutes");
 app.use("/auth", authRoutes);
 
 const auctionRoutes = require("./routes/auctionRoutes");
-app.use("/auction", require("./routes/auctionRoutes"));
+app.use("/auction", auctionRoutes);
+
 
 
 /* TEST */
@@ -42,6 +44,12 @@ mongoose
     require("./cron/endAuction");
   })
   .catch(console.error);
+
+const userRoutes = require("./routes/userRoutes");
+
+app.use("/users", userRoutes);
+
+
 
 
 /* SERVER */

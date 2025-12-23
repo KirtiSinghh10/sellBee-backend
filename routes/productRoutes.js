@@ -1,12 +1,14 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const upload = require("../middleware/upload");
 const auth = require("../middleware/auth");
 const cloudinary = require("cloudinary").v2;
+const User = require("../models/User");
 
 const router = express.Router();
 
-/* ================= CREATE LISTING WITH IMAGES ================= */
+/* ================= CREATE LISTING ================= */
 router.post(
   "/add",
   auth,
@@ -19,6 +21,7 @@ router.post(
         price,
         category,
         condition,
+        sellerPhone,
       } = req.body;
 
       if (!title || !price) {
@@ -37,6 +40,7 @@ router.post(
         price,
         category,
         condition,
+        sellerPhone,
         sellerCollegeId: req.user.collegeId,
         sellerEmail: req.user.email,
         images,
@@ -50,7 +54,6 @@ router.post(
     }
   }
 );
-
 
 /* ================= GET ALL PRODUCTS ================= */
 router.get("/", async (req, res) => {
@@ -77,19 +80,30 @@ router.get("/mine/:collegeId", async (req, res) => {
   }
 });
 
-/* ================= GET SINGLE PRODUCT ================= */
-router.get("/:id", async (req, res) => {
+/* ================= GET AUCTION PRODUCTS ================= */
+router.get("/auction/all", async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const products = await Product.find({ status: "auction" }).sort({
+      auctionEndAt: 1,
+    });
 
-    if (!product) {
-      return res.status(404).json({ message: "Listing not found" });
-    }
+    const auctions = products.map((p) => ({
+      _id: p._id,
+      title: p.title,
+      basePrice: p.originalPrice,
+      currentBid: p.currentBid,
+      originalPrice: p.originalPrice,
+      category: p.category,
+      images: p.images,
+      sellerCollegeId: p.sellerCollegeId,
+      endsAt: p.auctionEndAt,
+      totalBids: p.currentBid > p.originalPrice ? 1 : 0,
+    }));
 
-    res.json(product);
+    res.json(auctions);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Failed to fetch listing" });
+    res.status(500).json({ message: "Failed to fetch auctions" });
   }
 });
 
@@ -102,12 +116,10 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(404).json({ message: "Listing not found" });
     }
 
-    // 🔐 ownership check
     if (product.sellerCollegeId !== req.user.collegeId) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // 🚫 lock edits once auction starts
     if (product.status === "auction") {
       return res.status(403).json({
         message: "Cannot edit product once auction has started",
@@ -120,6 +132,7 @@ router.put("/:id", auth, async (req, res) => {
       "price",
       "category",
       "condition",
+      "sellerPhone",
     ];
 
     allowedFields.forEach((field) => {
@@ -142,22 +155,19 @@ router.delete("/:id", auth, async (req, res) => {
     const product = await Product.findById(req.params.id);
 
     if (!product) {
-      return res.status(404).json({ message: "Not found" });
+      return res.status(404).json({ message: "Listing not found" });
     }
 
-    // 🔐 ownership check
     if (product.sellerCollegeId !== req.user.collegeId) {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // 🚫 block delete during auction
     if (product.status === "auction") {
       return res.status(403).json({
         message: "Cannot delete product during auction",
       });
     }
 
-    // 🔥 delete images from Cloudinary
     for (const img of product.images) {
       await cloudinary.uploader.destroy(img.public_id);
     }
@@ -179,7 +189,6 @@ router.patch("/:id/sold", auth, async (req, res) => {
       return res.status(404).json({ message: "Listing not found" });
     }
 
-    // 🔐 ownership check
     if (product.sellerCollegeId !== req.user.collegeId) {
       return res.status(403).json({ message: "Not authorized" });
     }
@@ -194,30 +203,25 @@ router.patch("/:id/sold", auth, async (req, res) => {
   }
 });
 
-/* ================= GET AUCTION PRODUCTS ================= */
-router.get("/auction/all", async (req, res) => {
+/* ================= GET SINGLE PRODUCT (ALWAYS LAST) ================= */
+router.get("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid product ID" });
+  }
+
   try {
-    const products = await Product.find({
-      status: "auction",
-    }).sort({ auctionEndAt: 1 });
+    const product = await Product.findById(id);
 
-    const auctions = products.map((p) => ({
-      _id: p._id,
-      title: p.title,
-      basePrice: p.originalPrice,
-      currentBid: p.currentBid,
-      originalPrice: p.originalPrice,
-      category: p.category,
-      images: p.images,
-      sellerCollegeId: p.sellerCollegeId,
-      endsAt: p.auctionEndAt,
-      totalBids: p.currentBid > p.originalPrice ? 1 : 0,
-    }));
+    if (!product) {
+      return res.status(404).json({ message: "Listing not found" });
+    }
 
-    res.json(auctions);
+    res.json(product);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to fetch auctions" });
+    console.error("❌ GET /products/:id error:", err);
+    res.status(500).json({ message: "Failed to fetch listing" });
   }
 });
 

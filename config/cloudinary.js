@@ -7,3 +7,5 @@ cloudinary.config({
 });
 
 module.exports = cloudinary;
+
+//cloudinary to store image uploads

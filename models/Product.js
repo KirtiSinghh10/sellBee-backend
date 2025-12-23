@@ -35,6 +35,11 @@ const productSchema = new mongoose.Schema(
       default: 0,
     },
 
+    sellerPhone: {
+  type: String,
+},
+
+
     winnerEmail: {
   type: String,
 },
@@ -50,7 +55,7 @@ auctionEndedAt: {
 
     originalPrice: Number,
   },
-  { timestamps: true } // 👈 createdAt lives here
+  { timestamps: true }
 );
 
 module.exports = mongoose.model("Product", productSchema);

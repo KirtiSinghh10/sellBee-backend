@@ -27,7 +27,8 @@ cron.schedule("0 0 * * *", async () => { // once daily at midnight
 
       await product.save();
 
-      // 📧 EMAIL (SAFE – NEVER BREAKS CRON)
+      //mailing sellers
+
       try {
         await sendMail({
           to: product.sellerEmail,
@@ -42,7 +43,7 @@ Auction ends on ${product.auctionEndAt.toDateString()}.`,
       }
     }
 
-    console.log(`✅ Moved ${products.length} products to auction`);
+
   } catch (err) {
     console.error("❌ Auto-auction error:", err);
   }

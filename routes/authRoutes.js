@@ -1,22 +1,24 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const User = require("../models/User.js");
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
 const router = express.Router();
 
 /* ================= SIGNUP ================= */
 router.post("/signup", async (req, res) => {
   try {
-    const { name, email, password, collegeId } = req.body;
+    const { name, email, password, collegeId, phone } = req.body;
 
     // Validation
-    if (!name || !email || !password || !collegeId) {
+    if (!name || !email || !password || !collegeId || !phone) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
     if (!email.endsWith(".edu") && !email.endsWith(".ac.in")) {
-      return res.status(400).json({ message: "Only college email addresses allowed" });
+      return res
+        .status(400)
+        .json({ message: "Only college email addresses allowed" });
     }
 
     const existingUser = await User.findOne({ email });
@@ -24,7 +26,6 @@ router.post("/signup", async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Hashing
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = new User({
@@ -32,17 +33,31 @@ router.post("/signup", async (req, res) => {
       email,
       password: hashedPassword,
       collegeId,
+      phone, // ✅ FIXED
     });
 
     await user.save();
 
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
     res.status(201).json({
       message: "User registered successfully",
-      user: { id: user._id, name: user.name, email: user.email, collegeId: user.collegeId },
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        collegeId: user.collegeId,
+      },
     });
   } catch (err) {
     console.error("Signup Error:", err);
-    res.status(500).json({ message: "Signup failed" });
+    res.status(400).json({ message: err.message });
   }
 });
 
@@ -65,9 +80,8 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // JWT Creation
     const token = jwt.sign(
-      { id: user._id, collegeId: user.collegeId, email: user.email },
+      { id: user._id },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -78,8 +92,8 @@ router.post("/login", async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        phone: user.phone,  
         email: user.email,
+        phone: user.phone,
         collegeId: user.collegeId,
       },
     });

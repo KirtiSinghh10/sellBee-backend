@@ -24,6 +24,7 @@ testimonial: {
     type: String,
     maxLength: 300,
     required: false,
+    default: null, 
   },
 
   collegeId: {

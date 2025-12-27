@@ -1,9 +1,11 @@
-const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-
+// routes/authRoutes.js
+import express from "express";
 const router = express.Router();
+
+export default router;
 
 /* ================= SIGNUP ================= */
 router.post("/signup", async (req, res) => {

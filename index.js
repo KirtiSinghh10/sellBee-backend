@@ -1,20 +1,19 @@
+import express from "express";
 import cors from "cors";
+import dotenv from "dotenv";
+import mongoose from "mongoose";
 
-app.use(cors({
-  origin: "*",
-}));
+/* ================= CONFIG ================= */
+dotenv.config();
 
-require("dotenv").config();
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-
+/* ================= APP INIT ================= */
 const app = express();
 
-/* ================= CORS (MUST BE FIRST) ================= */
+/* ================= CORS ================= */
+/* Open for now, we’ll lock it after frontend deploy */
 app.use(
   cors({
-    origin: ["http://localhost:8080", "http://localhost:8084"],
+    origin: "*",
     credentials: true,
   })
 );
@@ -23,19 +22,20 @@ app.use(
 app.use(express.json());
 
 /* ================= ROUTES ================= */
-const productRoutes = require("./routes/productRoutes");
-const authRoutes = require("./routes/authRoutes");
-const auctionRoutes = require("./routes/auctionRoutes");
-const userRoutes = require("./routes/userRoutes");
+import productRoutes from "./routes/productRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import auctionRoutes from "./routes/auctionRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 app.use("/products", productRoutes);
 app.use("/auth", authRoutes);
 app.use("/auction", auctionRoutes);
 app.use("/users", userRoutes);
 
-/* ================= MULTER ERROR HANDLER (CRITICAL) ================= */
-/* 🔴 MUST COME AFTER ROUTES */
-app.use(require("./middleware/multerError"));
+/* ================= MULTER ERROR HANDLER ================= */
+/* MUST be after routes */
+import multerErrorHandler from "./middleware/multerError.js";
+app.use(multerErrorHandler);
 
 /* ================= HEALTH CHECK ================= */
 app.get("/", (req, res) => {
@@ -45,16 +45,16 @@ app.get("/", (req, res) => {
 /* ================= DATABASE ================= */
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log("MongoDB connected successfully 🐝");
 
-    // 🔁 START CRON JOBS ONLY AFTER DB IS READY
-    require("./cron/autoAuction");
-    require("./cron/endAuction");
+    // Cron jobs (ES module imports)
+    await import("./cron/autoAuction.js");
+    await import("./cron/endAuction.js");
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);
-    process.exit(1); // 🔒 fail fast in prod
+    process.exit(1);
   });
 
 /* ================= SERVER ================= */

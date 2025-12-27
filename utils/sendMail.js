@@ -1,4 +1,4 @@
-const nodemailer = require("nodemailer");
+import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -8,7 +8,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-module.exports = async ({ to, subject, text }) => {
+export default async ({ to, subject, text }) => {
   await transporter.sendMail({
     from: `"SellBee 🐝" <${process.env.MAIL_USER}>`,
     to,

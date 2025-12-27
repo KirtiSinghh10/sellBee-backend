@@ -1,8 +1,7 @@
 console.log("✅ autoAuction cron file loaded");
-
-const cron = require("node-cron");
-const Product = require("../models/Product");
-const sendMail = require("../utils/sendMail");
+import cron from "node-cron";
+import Product from "../models/Product.js";
+import sendMail from "../utils/sendMail.js";  
 
 cron.schedule("0 0 * * *", async () => { // once daily at midnight
   try {

@@ -1,6 +1,7 @@
-const multer = require("multer");
 
-module.exports = (err, req, res, next) => {
+import multer from "multer";
+
+export default (err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     return res.status(400).json({ message: err.message });
   }

@@ -1,9 +1,10 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const Product = require("../models/Product");
-const upload = require("../middleware/upload");
-const auth = require("../middleware/auth");
-const cloudinary = require("cloudinary").v2;
+import express from "express";
+import mongoose from "mongoose";
+import Product from "../models/Product.js";
+import upload from "../middleware/upload.js";
+import auth from "../middleware/auth.js";
+import { v2 as cloudinary } from "cloudinary";
+
 
 const router = express.Router();
 
@@ -229,4 +230,4 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

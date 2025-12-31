@@ -6,9 +6,6 @@ const cors = require("cors");
 const app = express();
 
 /* ================= CORS (MUST BE FIRST) ================= */
-const cors = require("cors");
-
-/* ================= CORS (MUST BE FIRST) ================= */
 app.use(
   cors({
     origin: [
@@ -20,8 +17,6 @@ app.use(
     credentials: true,
   })
 );
-
-
 
 /* ================= BODY PARSERS ================= */
 app.use(express.json());
@@ -58,7 +53,7 @@ mongoose
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);
-    process.exit(1); // 🔒 fail fast in prod
+    process.exit(1);
   });
 
 /* ================= SERVER ================= */

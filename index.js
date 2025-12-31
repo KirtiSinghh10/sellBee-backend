@@ -6,12 +6,18 @@ const cors = require("cors");
 const app = express();
 
 /* ================= CORS (MUST BE FIRST) ================= */
+import cors from "cors";
+
 app.use(
   cors({
-    origin: ["http://localhost:8080", "http://localhost:8084"],
+    origin: [
+      "https://sell-bee-mongo.vercel.app",
+      "http://localhost:5173"
+    ],
     credentials: true,
   })
 );
+
 
 /* ================= BODY PARSERS ================= */
 app.use(express.json());

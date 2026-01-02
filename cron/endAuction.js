@@ -4,8 +4,8 @@ const cron = require("node-cron");
 const Product = require("../models/Product");
 const sendMail = require("../utils/sendMail");
 
-// Runs every day at midnight
-cron.schedule("0 0 * * *", async () => {
+// Runs every minute (important for auctions)
+cron.schedule("* * * * *", async () => {
   console.log("⏰ Running end-auction cron");
 
   try {
@@ -17,31 +17,62 @@ cron.schedule("0 0 * * *", async () => {
     });
 
     for (const product of products) {
+      // 🔹 Sort bids (highest first)
+      const sortedBids = [...product.bids].sort(
+        (a, b) => b.amount - a.amount
+      );
+
+      const top5 = sortedBids.slice(0, 5);
+
+      const winner = top5[0];
+
       product.status = "sold";
-      product.finalPrice = product.currentBid;
+      product.finalPrice = winner ? winner.amount : product.currentBid;
+      product.winnerEmail = winner ? winner.bidderEmail : null;
       product.auctionEndedAt = now;
+
       await product.save();
 
-      // 📧 Email seller
+      // 📧 Email seller with TOP 5 bidders
       await sendMail({
         to: product.sellerEmail,
         subject: "Your auction has ended 🐝",
-        text: `Your product "${product.title}" sold for ₹${product.finalPrice}.`,
+        html: `
+          <h3>${product.title}</h3>
+          <p>Final price: ₹${product.finalPrice}</p>
+          <h4>Top 5 bidders:</h4>
+          <ul>
+            ${
+              top5.length
+                ? top5
+                    .map(
+                      (b) =>
+                        `<li>${b.bidderName} – ₹${b.amount} – ${b.bidderPhone}</li>`
+                    )
+                    .join("")
+                : "<li>No bids received</li>"
+            }
+          </ul>
+        `,
       });
 
-      // 📧 Email winner (if exists)
-      if (product.winnerEmail) {
+      // 📧 Email winner
+      if (winner) {
         await sendMail({
-          to: product.winnerEmail,
-          subject: "You won the auction! 🎉",
-          text: `You won "${product.title}" for ₹${product.finalPrice}.
+          to: winner.bidderEmail,
+          subject: "🎉 You won the auction on SellBee!",
+          text: `Congratulations ${winner.bidderName}!
+
+You won the auction for "${product.title}" at ₹${winner.amount}.
+
 Please contact the seller to complete the purchase.`,
         });
       }
     }
 
-    console.log(`✅ ${products.length} auctions ended`);
-
+    if (products.length) {
+      console.log(`✅ ${products.length} auctions ended`);
+    }
   } catch (err) {
     console.error("❌ End-auction cron error:", err);
   }

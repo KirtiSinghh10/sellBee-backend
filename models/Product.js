@@ -15,10 +15,11 @@ const productSchema = new mongoose.Schema(
     },
 
     sellerEmail: String,
+    sellerPhone: String,
 
     status: {
       type: String,
-      enum: ["active", "sold", "auction"],
+      enum: ["active", "auction", "sold"],
       default: "active",
     },
 
@@ -29,37 +30,44 @@ const productSchema = new mongoose.Schema(
       },
     ],
 
-    auctionEndAt: Date,
+    /* ================= AUCTION CORE ================= */
+
+    originalPrice: Number,
+
     currentBid: {
       type: Number,
       default: 0,
     },
 
-    sellerPhone: {
-  type: String,
-},
+    auctionStartAt: Date,
+    auctionEndAt: Date,
+    auctionEndedAt: Date,
 
+    finalPrice: Number,
 
-    winnerEmail: {
-  type: String,
-},
+    winnerEmail: String,
 
-finalPrice: {
-  type: Number,
-},
+    /* ================= BIDDING ================= */
 
-auctionEndedAt: {
-  type: Date,
-},
+    bids: [
+      {
+        bidderName: String,
+        bidderEmail: String,
+        bidderPhone: String,
+        amount: Number,
+        bidAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
 
-isNegotiable: {
-  type: Boolean,
-  default: true, // negotiable by default
-},
+    /* ================= FLAGS ================= */
 
-
-
-    originalPrice: Number,
+    isNegotiable: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

@@ -10,6 +10,7 @@ app.use(
   cors({
     origin: [
       "https://sell-bee-mongo.vercel.app",
+      "http://localhost:5173",
     ],
     credentials: true,
   })
@@ -29,8 +30,7 @@ app.use("/auth", authRoutes);
 app.use("/auction", auctionRoutes);
 app.use("/users", userRoutes);
 
-/* ================= MULTER ERROR HANDLER (CRITICAL) ================= */
-/* 🔴 MUST COME AFTER ROUTES */
+/* ================= MULTER ERROR HANDLER ================= */
 app.use(require("./middleware/multerError"));
 
 /* ================= HEALTH CHECK ================= */
@@ -47,6 +47,8 @@ mongoose
     // 🔁 START CRON JOBS ONLY AFTER DB IS READY
     require("./cron/autoAuction");
     require("./cron/endAuction");
+
+    console.log("🕒 Cron jobs started");
   })
   .catch((err) => {
     console.error("❌ MongoDB connection error:", err);

@@ -4,7 +4,7 @@ const cron = require("node-cron");
 const Product = require("../models/Product");
 const sendMail = require("../utils/sendMail");
 
-cron.schedule("0 0 * * *", async () => {
+cron.schedule("* * * * *", async () => {
   try {
     console.log("🔁 Auto-auction check running...");
 

@@ -10,9 +10,6 @@ app.use(
   cors({
     origin: [
       "https://sell-bee-mongo.vercel.app",
-      "http://localhost:5173",
-      "http://localhost:8080",
-      "http://localhost:8084",
     ],
     credentials: true,
   })

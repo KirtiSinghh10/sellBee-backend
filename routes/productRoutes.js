@@ -45,6 +45,8 @@ router.post(
         sellerCollegeId: req.user.collegeId,
         sellerEmail: req.user.email,
         sellerTestimonial: req.user.testimonial,
+        isNegotiable,
+
         images,
       });
 

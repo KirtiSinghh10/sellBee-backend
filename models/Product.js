@@ -52,6 +52,12 @@ auctionEndedAt: {
   type: Date,
 },
 
+isNegotiable: {
+  type: Boolean,
+  default: true, // negotiable by default
+},
+
+
 
     originalPrice: Number,
   },

@@ -6,8 +6,6 @@ const sendMail = require("../utils/sendMail");
 
 // Runs every minute (important for auctions)
 cron.schedule("* * * * *", async () => {
-  console.log("⏰ Running end-auction cron");
-
   try {
     const now = new Date();
 
@@ -17,29 +15,38 @@ cron.schedule("* * * * *", async () => {
     });
 
     for (const product of products) {
+      // 🔒 SAFETY GUARD — prevent double processing
+      if (product.status !== "auction") continue;
+
       // 🔹 Sort bids (highest first)
       const sortedBids = [...product.bids].sort(
         (a, b) => b.amount - a.amount
       );
 
       const top5 = sortedBids.slice(0, 5);
-
-      const winner = top5[0];
+      const winner = top5[0] || null;
 
       product.status = "sold";
-      product.finalPrice = winner ? winner.amount : product.currentBid;
-      product.winnerEmail = winner ? winner.bidderEmail : null;
+      product.finalPrice = winner
+        ? winner.amount
+        : product.currentBid;
+
+      product.winnerEmail = winner
+        ? winner.bidderEmail
+        : null;
+
       product.auctionEndedAt = now;
 
       await product.save();
 
-      // 📧 Email seller with TOP 5 bidders
+      /* ================= SELLER EMAIL ================= */
       await sendMail({
         to: product.sellerEmail,
         subject: "Your auction has ended 🐝",
         html: `
           <h3>${product.title}</h3>
-          <p>Final price: ₹${product.finalPrice}</p>
+          <p><strong>Final price:</strong> ₹${product.finalPrice}</p>
+
           <h4>Top 5 bidders:</h4>
           <ul>
             ${
@@ -56,7 +63,7 @@ cron.schedule("* * * * *", async () => {
         `,
       });
 
-      // 📧 Email winner
+      /* ================= WINNER EMAIL ================= */
       if (winner) {
         await sendMail({
           to: winner.bidderEmail,
@@ -70,7 +77,7 @@ Please contact the seller to complete the purchase.`,
       }
     }
 
-    if (products.length) {
+    if (products.length > 0) {
       console.log(`✅ ${products.length} auctions ended`);
     }
   } catch (err) {

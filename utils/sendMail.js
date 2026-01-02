@@ -10,9 +10,10 @@ const transporter = nodemailer.createTransport({
 
 module.exports = async ({ to, subject, text }) => {
   await transporter.sendMail({
-    from: `"SellBee 🐝" <${process.env.MAIL_USER}>`,
-    to,
-    subject,
-    text,
-  });
+  to,
+  subject,
+  text,   // optional
+  html,   // optional
+});
+
 };

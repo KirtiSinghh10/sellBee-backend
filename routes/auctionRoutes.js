@@ -52,3 +52,5 @@ router.post("/:id/bid", auth, async (req, res) => {
   }
 });
 
+module.exports = router;
+

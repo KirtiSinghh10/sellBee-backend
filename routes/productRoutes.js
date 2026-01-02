@@ -20,6 +20,7 @@ router.post(
         price,
         category,
         condition,
+        isNegotiable,
         sellerPhone,
       } = req.body;
 
@@ -45,7 +46,8 @@ router.post(
         sellerCollegeId: req.user.collegeId,
         sellerEmail: req.user.email,
         sellerTestimonial: req.user.testimonial,
-        isNegotiable,
+        isNegotiable: isNegotiable !== "false",
+
 
         images,
       });

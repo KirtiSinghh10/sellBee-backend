@@ -52,7 +52,7 @@ router.post("/send-otp", async (req, res) => {
     user.otpExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
     await user.save();
 
-    console.log("Sending OTP email to:", email);
+     console.log("Sending OTP email to:", email);
 
     // 📧 Send OTP email
     await sendMail({
@@ -66,13 +66,18 @@ router.post("/send-otp", async (req, res) => {
       `,
     });
 
+    console.log("✅ OTP email sent successfully");
     return res.json({ message: "OTP sent to college email" });
   } catch (err) {
     console.error("Send OTP Error:", err);
-    return res.status(500).json({ message: "Failed to send OTP" });
+    console.error("Error details:", err.message); // Add this
+    console.error("Error stack:", err.stack); // Add this
+    return res.status(500).json({ 
+      message: "Failed to send OTP",
+      error: err.message // Add this for debugging (remove in production)
+    });
   }
 });
-
 /* =====================================================
    VERIFY OTP (SIGNUP STEP 2)
 ===================================================== */

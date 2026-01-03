@@ -1,9 +1,8 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Product = require("../models/Product");
-const upload = require("../middleware/upload");
+const { upload, cloudinary } = require("../middleware/upload");
 const auth = require("../middleware/auth");
-const cloudinary = require("cloudinary").v2;
 
 const router = express.Router();
 
@@ -28,13 +27,22 @@ router.post(
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      // ✅ SAFE image extraction
-      const images = Array.isArray(req.files)
-        ? req.files.map((file) => ({
-            url: file.path,        // Cloudinary URL
-            public_id: file.filename,
-          }))
-        : [];
+      /* ================= UPLOAD IMAGES TO CLOUDINARY ================= */
+      const images = [];
+
+      if (Array.isArray(req.files)) {
+        for (const file of req.files) {
+          const result = await cloudinary.uploader.upload(
+            `data:${file.mimetype};base64,${file.buffer.toString("base64")}`,
+            { folder: "sellbee" }
+          );
+
+          images.push({
+            url: result.secure_url,
+            public_id: result.public_id,
+          });
+        }
+      }
 
       const product = await Product.create({
         title,
@@ -47,17 +55,15 @@ router.post(
         sellerEmail: req.user.email,
         sellerTestimonial: req.user.testimonial,
         isNegotiable: isNegotiable !== "false",
-
-
         images,
       });
 
       return res.status(201).json(product);
     } catch (err) {
       console.error("❌ CREATE LISTING ERROR:", err);
-      return res
-        .status(500)
-        .json({ message: err.message || "Failed to create listing" });
+      return res.status(500).json({
+        message: err.message || "Failed to create listing",
+      });
     }
   }
 );
@@ -175,7 +181,7 @@ router.delete("/:id", auth, async (req, res) => {
       });
     }
 
-    // ✅ Delete images from Cloudinary
+    /* ================= DELETE IMAGES FROM CLOUDINARY ================= */
     for (const img of product.images) {
       await cloudinary.uploader.destroy(img.public_id);
     }

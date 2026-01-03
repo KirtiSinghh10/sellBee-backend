@@ -13,19 +13,16 @@ router.post("/send-otp", async (req, res) => {
   try {
     const { name, email, password, collegeId, phone } = req.body;
 
-    // 🔒 Basic validation
     if (!name || !email || !password || !collegeId || !phone) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
-    // 🎓 College email check
     if (!email.endsWith(".edu") && !email.endsWith(".ac.in")) {
       return res
         .status(400)
         .json({ message: "Only college email addresses allowed" });
     }
 
-    // 🔁 Allow resend OTP if user exists but NOT verified
     let user = await User.findOne({ email });
 
     if (user && user.isEmailVerified) {
@@ -34,10 +31,11 @@ router.post("/send-otp", async (req, res) => {
 
     // 🔐 Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedOtp = await bcrypt.hash(otp, 10);
 
-    // 🧪 Create OR update unverified user
+    // 🆕 Create user only once
     if (!user) {
+      const hashedPassword = await bcrypt.hash(password, 10);
       user = new User({
         name,
         email,
@@ -48,13 +46,12 @@ router.post("/send-otp", async (req, res) => {
       });
     }
 
-    user.otp = otp;
-    user.otpExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    user.otp = hashedOtp;
+    user.otpExpiresAt = Date.now() + 10 * 60 * 1000;
+    user.otpAttempts = 0;
+
     await user.save();
 
-     console.log("Sending OTP email to:", email);
-
-    // 📧 Send OTP email
     await sendMail({
       to: email,
       subject: "SellBee Email Verification OTP",
@@ -66,18 +63,13 @@ router.post("/send-otp", async (req, res) => {
       `,
     });
 
-    console.log("✅ OTP email sent successfully");
     return res.json({ message: "OTP sent to college email" });
   } catch (err) {
-    console.error("Send OTP Error:", err);
-    console.error("Error details:", err.message); // Add this
-    console.error("Error stack:", err.stack); // Add this
-    return res.status(500).json({ 
-      message: "Failed to send OTP",
-      error: err.message // Add this for debugging (remove in production)
-    });
+    console.error("Send OTP Error:", err.message);
+    return res.status(500).json({ message: "Failed to send OTP" });
   }
 });
+
 /* =====================================================
    VERIFY OTP (SIGNUP STEP 2)
 ===================================================== */
@@ -90,19 +82,30 @@ router.post("/verify-otp", async (req, res) => {
     if (
       !user ||
       user.isEmailVerified ||
-      user.otp !== otp ||
+      !user.otp ||
       user.otpExpiresAt < Date.now()
     ) {
       return res.status(400).json({ message: "Invalid or expired OTP" });
     }
 
-    // ✅ Mark email verified
+    if (user.otpAttempts >= 5) {
+      return res.status(403).json({ message: "Too many attempts" });
+    }
+
+    const isOtpValid = await bcrypt.compare(otp, user.otp);
+    if (!isOtpValid) {
+      user.otpAttempts += 1;
+      await user.save();
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
     user.isEmailVerified = true;
     user.otp = undefined;
     user.otpExpiresAt = undefined;
+    user.otpAttempts = undefined;
+
     await user.save();
 
-    // 🔑 Issue JWT
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
@@ -121,7 +124,7 @@ router.post("/verify-otp", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Verify OTP Error:", err);
+    console.error("Verify OTP Error:", err.message);
     return res.status(500).json({ message: "OTP verification failed" });
   }
 });
@@ -138,13 +141,8 @@ router.post("/login", async (req, res) => {
     }
 
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ message: "Invalid credentials" });
-    }
-
-    // 🔒 Block unverified users
-    if (!user.isEmailVerified) {
-      return res.status(403).json({ message: "Email not verified" });
+    if (!user || !user.isEmailVerified) {
+      return res.status(403).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -170,7 +168,7 @@ router.post("/login", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Login Error:", err);
+    console.error("Login Error:", err.message);
     return res.status(500).json({ message: "Login failed" });
   }
 });

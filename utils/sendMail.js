@@ -1,32 +1,30 @@
-const nodemailer = require("nodemailer");
+const brevo = require('@getbrevo/brevo');
 
-const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
-  port: 587,
-  secure: false, // STARTTLS
-  requireTLS: true,
-  auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS,
-  },
-  tls: {
-    ciphers: "SSLv3",
-  },
-});
+const apiInstance = new brevo.TransactionalEmailsApi();
+apiInstance.setApiKey(
+  brevo.TransactionalEmailsApiApiKeys.apiKey,
+  process.env.BREVO_API_KEY
+);
 
 module.exports = async ({ to, subject, text, html }) => {
   try {
-    const info = await transporter.sendMail({
-      from: `"SellBee" <${process.env.BREVO_FROM_EMAIL}>`,
-      to,
-      subject,
-      text,
-      html,
-    });
+    console.log("📧 Attempting to send email via Brevo API to:", to);
+    
+    const sendSmtpEmail = new brevo.SendSmtpEmail();
+    sendSmtpEmail.sender = { 
+      name: "SellBee", 
+      email: process.env.BREVO_FROM_EMAIL 
+    };
+    sendSmtpEmail.to = [{ email: to }];
+    sendSmtpEmail.subject = subject;
+    sendSmtpEmail.htmlContent = html;
+    if (text) sendSmtpEmail.textContent = text;
 
-    return info;
+    const result = await apiInstance.sendTransacEmail(sendSmtpEmail);
+    console.log("✅ Email sent successfully:", result.messageId);
+    return result;
   } catch (error) {
-    console.error("❌ Email sending failed:", error.message);
+    console.error("❌ Email sending failed:", error);
     throw error;
   }
 };

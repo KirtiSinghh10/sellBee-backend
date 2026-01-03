@@ -25,9 +25,10 @@ router.post("/send-otp", async (req, res) => {
         .json({ message: "Only college email addresses allowed" });
     }
 
-    // ❌ Prevent duplicate users
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+    // 🔁 Allow resend OTP if user exists but NOT verified
+    let user = await User.findOne({ email });
+
+    if (user && user.isEmailVerified) {
       return res.status(400).json({ message: "User already exists" });
     }
 
@@ -35,17 +36,23 @@ router.post("/send-otp", async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // 🧪 Create UNVERIFIED user (temporary)
-    await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      collegeId,
-      phone,
-      otp,
-      otpExpiresAt: Date.now() + 10 * 60 * 1000, // 10 mins
-      isEmailVerified: false,
-    });
+    // 🧪 Create OR update unverified user
+    if (!user) {
+      user = new User({
+        name,
+        email,
+        password: hashedPassword,
+        collegeId,
+        phone,
+        isEmailVerified: false,
+      });
+    }
+
+    user.otp = otp;
+    user.otpExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    await user.save();
+
+    console.log("Sending OTP email to:", email);
 
     // 📧 Send OTP email
     await sendMail({
@@ -59,10 +66,10 @@ router.post("/send-otp", async (req, res) => {
       `,
     });
 
-    res.json({ message: "OTP sent to college email" });
+    return res.json({ message: "OTP sent to college email" });
   } catch (err) {
     console.error("Send OTP Error:", err);
-    res.status(500).json({ message: "Failed to send OTP" });
+    return res.status(500).json({ message: "Failed to send OTP" });
   }
 });
 
@@ -97,7 +104,7 @@ router.post("/verify-otp", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({
+    return res.json({
       message: "Email verified successfully",
       token,
       user: {
@@ -110,12 +117,12 @@ router.post("/verify-otp", async (req, res) => {
     });
   } catch (err) {
     console.error("Verify OTP Error:", err);
-    res.status(500).json({ message: "OTP verification failed" });
+    return res.status(500).json({ message: "OTP verification failed" });
   }
 });
 
 /* =====================================================
-   LOGIN (UNCHANGED LOGIC + 1 SECURITY CHECK)
+   LOGIN
 ===================================================== */
 router.post("/login", async (req, res) => {
   try {
@@ -130,7 +137,7 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
-    // 🔒 BLOCK unverified users
+    // 🔒 Block unverified users
     if (!user.isEmailVerified) {
       return res.status(403).json({ message: "Email not verified" });
     }
@@ -146,7 +153,7 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({
+    return res.json({
       message: "Login successful",
       token,
       user: {
@@ -159,7 +166,7 @@ router.post("/login", async (req, res) => {
     });
   } catch (err) {
     console.error("Login Error:", err);
-    res.status(500).json({ message: "Login failed" });
+    return res.status(500).json({ message: "Login failed" });
   }
 });
 

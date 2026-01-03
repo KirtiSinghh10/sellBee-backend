@@ -1,19 +1,21 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp-relay.brevo.com",
+  port: 587,
+  secure: false, // TLS
   auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS,
+    user: process.env.BREVO_USER,
+    pass: process.env.BREVO_SMTP_KEY,
   },
 });
 
-module.exports = async ({ to, subject, text }) => {
+module.exports = async ({ to, subject, text, html }) => {
   await transporter.sendMail({
-  to,
-  subject,
-  text,   // optional
-  html,   // optional
-});
-
+    from: "SellBee <noreply@sellbee.app>",
+    to,
+    subject,
+    text,
+    html,
+  });
 };

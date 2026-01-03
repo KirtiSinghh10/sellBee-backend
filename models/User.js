@@ -27,6 +27,16 @@ testimonial: {
     default: null, 
   },
 
+  // models/User.js
+otp: String,
+otpExpiresAt: Date,
+
+isEmailVerified: {
+  type: Boolean,
+  default: false,
+},
+
+
   collegeId: {
   type: String,
   required: true,

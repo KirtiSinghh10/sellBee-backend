@@ -2,50 +2,103 @@ const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const sendMail = require("../utils/sendMail");
 
 const router = express.Router();
 
-/* ================= SIGNUP ================= */
-router.post("/signup", async (req, res) => {
+/* =====================================================
+   SEND OTP (SIGNUP STEP 1)
+===================================================== */
+router.post("/send-otp", async (req, res) => {
   try {
     const { name, email, password, collegeId, phone } = req.body;
 
-    // Validation
+    // 🔒 Basic validation
     if (!name || !email || !password || !collegeId || !phone) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
+    // 🎓 College email check
     if (!email.endsWith(".edu") && !email.endsWith(".ac.in")) {
       return res
         .status(400)
         .json({ message: "Only college email addresses allowed" });
     }
 
+    // ❌ Prevent duplicate users
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "User already exists" });
     }
 
+    // 🔐 Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = new User({
+    // 🧪 Create UNVERIFIED user (temporary)
+    await User.create({
       name,
       email,
       password: hashedPassword,
       collegeId,
-      phone, // ✅ FIXED
+      phone,
+      otp,
+      otpExpiresAt: Date.now() + 10 * 60 * 1000, // 10 mins
+      isEmailVerified: false,
     });
 
+    // 📧 Send OTP email
+    await sendMail({
+      to: email,
+      subject: "SellBee Email Verification OTP",
+      html: `
+        <h2>SellBee Verification</h2>
+        <p>Your OTP is:</p>
+        <h1>${otp}</h1>
+        <p>This OTP is valid for 10 minutes.</p>
+      `,
+    });
+
+    res.json({ message: "OTP sent to college email" });
+  } catch (err) {
+    console.error("Send OTP Error:", err);
+    res.status(500).json({ message: "Failed to send OTP" });
+  }
+});
+
+/* =====================================================
+   VERIFY OTP (SIGNUP STEP 2)
+===================================================== */
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (
+      !user ||
+      user.isEmailVerified ||
+      user.otp !== otp ||
+      user.otpExpiresAt < Date.now()
+    ) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+
+    // ✅ Mark email verified
+    user.isEmailVerified = true;
+    user.otp = undefined;
+    user.otpExpiresAt = undefined;
     await user.save();
 
+    // 🔑 Issue JWT
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
-    res.status(201).json({
-      message: "User registered successfully",
+    res.json({
+      message: "Email verified successfully",
       token,
       user: {
         id: user._id,
@@ -56,12 +109,14 @@ router.post("/signup", async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("Signup Error:", err);
-    res.status(400).json({ message: err.message });
+    console.error("Verify OTP Error:", err);
+    res.status(500).json({ message: "OTP verification failed" });
   }
 });
 
-/* ================= LOGIN ================= */
+/* =====================================================
+   LOGIN (UNCHANGED LOGIC + 1 SECURITY CHECK)
+===================================================== */
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -73,6 +128,11 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // 🔒 BLOCK unverified users
+    if (!user.isEmailVerified) {
+      return res.status(403).json({ message: "Email not verified" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);

@@ -12,7 +12,8 @@ const transporter = nodemailer.createTransport({
 
 module.exports = async ({ to, subject, text, html }) => {
   await transporter.sendMail({
-    from: "SellBee <noreply@sellbee.app>",
+    from: "SellBee <kirtisingh.cs24@bmsce.ac.in>",
+
     to,
     subject,
     text,

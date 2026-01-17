@@ -3,8 +3,69 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const sendMail = require("../utils/sendMail");
+const sendMail = require("../utils/sendMail");
+const bcrypt = require("bcryptjs");
+const User = require("../models/User");
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
 
-const router = express.Router();
+  const user = await User.findOne({ email });
+  if (!user)
+    return res.status(404).json({ message: "User not found" });
+
+  const otp = Math.floor(100000 + Math.random() * 900000);
+
+  user.resetPasswordOtp = await bcrypt.hash(otp.toString(), 10);
+  user.resetPasswordOtpExpires = Date.now() + 10 * 60 * 1000; // 10 min
+  await user.save();
+
+  await sendMail({
+    to: email,
+    subject: "SellBee Password Reset OTP",
+    html: `
+      <h3>Password Reset Request</h3>
+      <p>Your OTP is <b>${otp}</b></p>
+      <p>This OTP is valid for 10 minutes.</p>
+    `,
+  });
+
+  res.json({ message: "OTP sent to email" });
+});
+
+router.post("/verify-reset-otp", async (req, res) => {
+  const { email, otp } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user || !user.resetPasswordOtp)
+    return res.status(400).json({ message: "Invalid request" });
+
+  if (Date.now() > user.resetPasswordOtpExpires)
+    return res.status(400).json({ message: "OTP expired" });
+
+  const isValid = await bcrypt.compare(
+    otp.toString(),
+    user.resetPasswordOtp
+  );
+
+  if (!isValid)
+    return res.status(400).json({ message: "Invalid OTP" });
+
+  res.json({ message: "OTP verified" });
+});
+router.post("/reset-password", async (req, res) => {
+  const { email, newPassword } = req.body;
+
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: "User not found" });
+
+  user.password = await bcrypt.hash(newPassword, 10);
+  user.resetPasswordOtp = undefined;
+  user.resetPasswordOtpExpires = undefined;
+
+  await user.save();
+
+  res.json({ message: "Password reset successful" });
+});
 
 /* =====================================================
    SEND OTP (SIGNUP STEP 1)

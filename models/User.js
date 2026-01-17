@@ -46,6 +46,12 @@ isEmailVerified: {
     type: Date,
     default: Date.now,
   },
+  resetPasswordOtp: {
+  type: String,
+},
+resetPasswordOtpExpires: {
+  type: Date,
+},
 });
 
 module.exports = mongoose.model("User", userSchema);

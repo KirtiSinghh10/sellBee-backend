@@ -3,7 +3,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const sendMail = require("../utils/sendMail");
-const sendMail = require("../utils/sendMail");
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
 router.post("/forgot-password", async (req, res) => {
